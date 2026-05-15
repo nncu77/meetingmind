@@ -1,0 +1,9 @@
+# Python worker — deployed to Modal separately, not bundled with Vercel
+worker/
+
+# Local test artifacts
+test_audio/
+
+# Docs — keep in repo but don't ship to Vercel (smaller bundle)
+DEPLOY.md
+PRICING.md

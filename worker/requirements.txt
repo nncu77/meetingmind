@@ -1,0 +1,57 @@
+# Python 3.10 / Modal deployment.
+# All transitive deps pinned to avoid pip backtracking on Linux container
+# (see project memory: feedback_pip_backtracking_hf_deploy).
+
+# Web framework
+fastapi==0.115.6
+uvicorn==0.34.0
+pydantic==2.10.4
+
+# Modal (1.x — different API from 0.x: Mount → add_local_dir, etc.)
+modal>=1.4,<2
+
+# HTTP
+# httpx pinned <0.28 because supabase-py 2.9.1 requires httpx <0.28, >=0.26
+httpx==0.27.2
+starlette==0.41.3
+
+# Audio
+ffmpeg-python==0.2.0
+librosa==0.10.2.post1
+soundfile==0.12.1
+numpy==1.26.4
+scipy==1.13.1
+
+# Whisper Large v3 — faster-whisper uses CTranslate2 (4x faster than openai-whisper)
+faster-whisper==1.1.1
+ctranslate2==4.5.0
+
+# Speaker diarization (gated model — needs HF_TOKEN at runtime)
+pyannote.audio==3.3.2
+torch==2.5.1
+torchaudio==2.5.1
+# pyannote 3.3.2 still calls hf_hub_download(use_auth_token=...) which was
+# removed in huggingface_hub 1.0. Pin <1.0 until pyannote 4.x ships.
+huggingface_hub<1.0
+
+# Voice enrollment / matching
+resemblyzer==0.1.4
+
+# Supabase write-back
+# Sub-packages (postgrest / storage3 / realtime / gotrue) intentionally unpinned
+# — supabase 2.9.1 pulls compatible transitive versions itself. Explicit pins
+# led to conflicts (postgrest 0.18 / httpx 0.28 both rejected by supabase 2.9.1).
+# Re-pin later when we deploy to Modal/Linux and need reproducibility.
+supabase==2.9.1
+
+# Anthropic (worker-side calls to Claude, if needed)
+anthropic==0.42.0
+
+# Pin setuptools < 81 — newer versions removed pkg_resources which ctranslate2
+# still imports. Without this pin, fresh installs break faster-whisper imports.
+setuptools<81
+
+# OpenCC for Simplified → Traditional Chinese (Taiwan, with phrase conversion).
+# Groq Whisper outputs Simplified by default; we convert at the worker boundary
+# so downstream (DB, UI, exports) is all 繁體.
+opencc-python-reimplemented==0.1.7

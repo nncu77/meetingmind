@@ -39,3 +39,13 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# python worker
+worker/.venv/
+worker/__pycache__/
+worker/**/__pycache__/
+*.pyc
+worker/.pytest_cache/
+
+# local test artifacts (may contain signed URLs)
+test_audio/
