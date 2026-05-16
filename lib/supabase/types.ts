@@ -181,6 +181,8 @@ export type Database = {
           start_seconds: number;
           end_seconds: number;
           ordinal: number;
+          embedding: number[] | null;
+          cluster_id: string | null;
         };
         Insert: {
           id?: string;
@@ -190,8 +192,48 @@ export type Database = {
           start_seconds: number;
           end_seconds: number;
           ordinal?: number;
+          embedding?: number[] | string | null;
+          cluster_id?: string | null;
         };
-        Update: { title?: string; summary?: string | null };
+        Update: {
+          title?: string;
+          summary?: string | null;
+          embedding?: number[] | string | null;
+          cluster_id?: string | null;
+        };
+        Relationships: [];
+      };
+      topic_clusters: {
+        Row: {
+          id: string;
+          org_id: string;
+          canonical_title: string;
+          centroid: number[] | null;
+          member_count: number;
+          current_state_summary: Json | null;
+          current_state_at: string | null;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          org_id: string;
+          canonical_title: string;
+          centroid?: number[] | string | null;
+          member_count?: number;
+          current_state_summary?: Json | null;
+          current_state_at?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          canonical_title?: string;
+          centroid?: number[] | string | null;
+          member_count?: number;
+          current_state_summary?: Json | null;
+          current_state_at?: string | null;
+          updated_at?: string;
+        };
         Relationships: [];
       };
       action_items: {

@@ -250,6 +250,21 @@ def run_transcription_pipeline(
             insert_decisions(meeting_id, ext.decisions, topic_map)
             insert_open_questions(meeting_id, ext.open_questions, topic_map)
 
+            # Phase 2: 算 embedding + 指派 topic_cluster（跨會議聚類）
+            # 失敗不阻擋會議完成，下次有 OPENAI_API_KEY 時可跑 backfill 補
+            if meta.get("org_id") and ext.topics:
+                try:
+                    from clustering import cluster_topics_for_meeting  # noqa: WPS433
+
+                    from db import get_client as _get_sb  # noqa: WPS433
+
+                    n = cluster_topics_for_meeting(_get_sb(), meeting_id, meta["org_id"])
+                    logger.info("topic clustering done: %d topics assigned", n)
+                except Exception:
+                    logger.exception(
+                        "topic clustering failed (non-fatal); embeddings can be backfilled"
+                    )
+
             # Recompute cost including LLM tokens
             from cost_estimate import add_llm_cost_cents  # noqa: WPS433 — local helper below
 

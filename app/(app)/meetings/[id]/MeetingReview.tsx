@@ -7,7 +7,8 @@ import type { ReviewData } from './page';
 import SendEmailModal from './SendEmailModal';
 import ExportDropdown from './ExportDropdown';
 import ShareLinkModal from './ShareLinkModal';
-import { Lock, Shield } from 'lucide-react';
+import { Lock, Shield, GitBranch } from 'lucide-react';
+import Link from 'next/link';
 
 const SPEAKER_COLORS = [
   'bg-blue-50 border-blue-300 text-blue-900',
@@ -274,21 +275,47 @@ export default function MeetingReview({ data }: { data: ReviewData }) {
           <ol className="space-y-3">
             {topicSegments.map((t) => (
               <li key={t.id}>
-                <button
-                  type="button"
-                  onClick={() => seekTo(t.start_seconds)}
-                  className="block w-full rounded-md border bg-slate-50 p-3 text-left hover:bg-slate-100"
-                >
+                <div className="block w-full rounded-md border bg-slate-50 p-3">
                   <div className="mb-1 flex items-baseline justify-between gap-2">
-                    <h3 className="text-sm font-semibold text-slate-900">{t.title}</h3>
-                    <span className="font-mono text-[10px] text-slate-400">
-                      {fmtTime(t.start_seconds)}–{fmtTime(t.end_seconds)}
-                    </span>
+                    <button
+                      type="button"
+                      onClick={() => seekTo(t.start_seconds)}
+                      className="flex-1 text-left text-sm font-semibold text-slate-900 hover:underline"
+                    >
+                      {t.title}
+                    </button>
+                    <div className="flex items-center gap-1.5">
+                      {t.cluster_id ? (
+                        <Link
+                          href={`/topics/${t.cluster_id}`}
+                          className="rounded p-0.5 text-slate-400 transition hover:bg-white hover:text-slate-700"
+                          title="跨會議查看這個議題的演進"
+                        >
+                          <GitBranch className="h-3.5 w-3.5" />
+                        </Link>
+                      ) : (
+                        <span
+                          className="cursor-not-allowed p-0.5 text-slate-300"
+                          title="這個議題還沒被聚類（embedding 計算中或尚未跑 backfill）"
+                        >
+                          <GitBranch className="h-3.5 w-3.5" />
+                        </span>
+                      )}
+                      <span className="font-mono text-[10px] text-slate-400">
+                        {fmtTime(t.start_seconds)}–{fmtTime(t.end_seconds)}
+                      </span>
+                    </div>
                   </div>
                   {t.summary && (
-                    <p className="text-sm leading-relaxed text-slate-700">{t.summary}</p>
+                    <button
+                      type="button"
+                      onClick={() => seekTo(t.start_seconds)}
+                      className="block w-full text-left text-sm leading-relaxed text-slate-700 hover:underline"
+                    >
+                      {t.summary}
+                    </button>
                   )}
-                </button>
+                </div>
               </li>
             ))}
             {topicSegments.length === 0 && (

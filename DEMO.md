@@ -257,6 +257,24 @@ create policy "meetings visible to org unless confidential"
 
 `feat/v2-expansion` 分支正在加 6 個新功能 + 1 套雙層 quota 系統。所有花錢功能（寄信、Llama 70B 嚴格模式、PDF/Word 匯出、分享連結、議題時間軸 LLM 摘要）都必須先過 `checkQuota()` → 操作後 `recordUsage()`。
 
+**Phase 2（完成）：議題時間軸（跨會議聚類）**
+
+- `topic_segments` 加 `embedding vector(1536)` + `cluster_id`，新表 `topic_clusters` 含 centroid / canonical_title / current_state_summary
+- Worker 在 insert_topic_segments 後自動算 OpenAI `text-embedding-3-small` embedding，cosine ≥ 0.75 加入既有 cluster（running average 更新 centroid），否則開新 cluster — 失敗不阻擋會議完成
+- `/topics/[clusterId]` 頁面：
+  + 頂部「目前狀態」卡片：Claude Haiku 4.5 摘要 summary / next_step / open_blockers，**30 分鐘 cache 在 topic_clusters 表內**，每次 cache 失效或按【更新摘要】重新計算扣一次 `topic_timeline_query` quota
+  + 中間垂直時間軸：每場會議一個節點（決議綠 / 未決問題橘 / 僅討論灰），含當場該議題下的決議、行動項目、未決問題
+  + 下方「尚未解決的問題」彙整跨會議所有 open questions
+- 會議詳情頁每個議題段加 `GitBranch` 圖示 → `/topics/{cluster_id}`；未聚類時 disabled + tooltip
+- `scripts/backfill-topic-embeddings.ts`：一次性 script，對所有 embedding=null 的 topic 算 embedding + 指派 cluster（與 worker 同邏輯、同閾值），手動跑 `npx tsx scripts/backfill-topic-embeddings.ts`
+
+**新增環境變數（Phase 2）：**
+
+```
+OPENAI_API_KEY=                   # embedding 用；可換成 Cohere / Voyage 等更便宜方案
+OPENAI_EMBEDDING_MODEL=           # 可選 override，預設 text-embedding-3-small
+```
+
 **Phase 11（完成）：機密會議走 Together AI Llama 70B**
 
 - 上傳 / 錄音表單把 select 換成 radio：「標準（Claude）」/「嚴格（Llama 70B）」，列出 quota 進度
