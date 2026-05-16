@@ -253,6 +253,7 @@ export type Database = {
           confidence: number;
           needs_clarification: string | null;
           created_at: string;
+          created_by_member_id: string | null;
         };
         Insert: {
           id?: string;
@@ -270,6 +271,7 @@ export type Database = {
           confidence: number;
           needs_clarification?: string | null;
           created_at?: string;
+          created_by_member_id?: string | null;
         };
         Update: {
           status?: ActionStatus;

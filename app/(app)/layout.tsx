@@ -42,6 +42,9 @@ export default async function AppLayout({ children }: { children: React.ReactNod
               <Link href="/members" className="hover:text-slate-900">
                 成員
               </Link>
+              <Link href="/insights" className="hover:text-slate-900">
+                影響圈
+              </Link>
               <Link href="/eval" className="hover:text-slate-900">
                 指標
               </Link>

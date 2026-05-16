@@ -257,6 +257,24 @@ create policy "meetings visible to org unless confidential"
 
 `feat/v2-expansion` 分支正在加 6 個新功能 + 1 套雙層 quota 系統。所有花錢功能（寄信、Llama 70B 嚴格模式、PDF/Word 匯出、分享連結、議題時間軸 LLM 摘要）都必須先過 `checkQuota()` → 操作後 `recordUsage()`。
 
+**Phase 15（完成）：會議影響圈圖譜**
+
+- 新頁面 `/insights`：D3.js force-directed 圖,節點 = 成員,連線 = 「A 在某場會議指派任務給 B」
+- 節點大小 = 被指派任務總數,有聲紋註冊的成員金邊框,選中的紫字加粗
+- 連線粗細 = `log2(weight + 1) * 2`,顏色淡藍 `#93c5fd`,hover tooltip 顯示「N 次指派」
+- 拖曳節點 / 滾輪縮放 / 拖背景平移
+- 點節點開右側 panel:該成員「指派他人 / 被指派」分布 + 最近 5 場相關會議連結
+- 時間範圍 select:7 / 30 / 90 天 / 全部
+- 「只看我相關」toggle:篩出與當前 user 有交互的子圖
+- Empty state:少於 3 節點或 5 邊 → 顯示示意圖 + 提示文案
+- 嚴格遵守 D3-in-React 雷區:`useRef` SVG / `[data, dimensions]` 依賴 / tick 直接 mutate DOM / 拆 component / 個別 import 不用 `import * as d3`
+
+**底層:**
+
+- `action_items` 加 `created_by_member_id`(會議建立者對應的 member.id),既有資料 backfill
+- `influence_graph` SQL view 聚合連線次數,排除自指派
+- Worker `insert_action_items` 也寫入新欄位給未來新會議
+
 **Phase 2（完成）：議題時間軸（跨會議聚類）**
 
 - `topic_segments` 加 `embedding vector(1536)` + `cluster_id`，新表 `topic_clusters` 含 centroid / canonical_title / current_state_summary
