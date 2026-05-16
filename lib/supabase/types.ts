@@ -309,6 +309,81 @@ export type Database = {
         };
         Relationships: [];
       };
+      quota_usage: {
+        Row: {
+          id: string;
+          org_id: string | null;
+          resource_type: string;
+          period_start: string;
+          count: number;
+          updated_at: string;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          org_id?: string | null;
+          resource_type: string;
+          period_start: string;
+          count?: number;
+          updated_at?: string;
+          created_at?: string;
+        };
+        Update: {
+          count?: number;
+          updated_at?: string;
+        };
+        Relationships: [];
+      };
+      quota_alerts_sent: {
+        Row: {
+          id: string;
+          alert_type: string;
+          resource_type: string;
+          org_id: string | null;
+          period_start: string;
+          sent_at: string;
+        };
+        Insert: {
+          id?: string;
+          alert_type: string;
+          resource_type: string;
+          org_id?: string | null;
+          period_start: string;
+          sent_at?: string;
+        };
+        Update: never;
+        Relationships: [];
+      };
+      email_sends: {
+        Row: {
+          id: string;
+          meeting_id: string;
+          sent_by: string | null;
+          recipients: string[];
+          subject: string;
+          resend_message_id: string | null;
+          status: 'sent' | 'failed' | 'pending';
+          error_message: string | null;
+          sent_at: string;
+        };
+        Insert: {
+          id?: string;
+          meeting_id: string;
+          sent_by?: string | null;
+          recipients: string[];
+          subject: string;
+          resend_message_id?: string | null;
+          status?: 'sent' | 'failed' | 'pending';
+          error_message?: string | null;
+          sent_at?: string;
+        };
+        Update: {
+          status?: 'sent' | 'failed' | 'pending';
+          error_message?: string | null;
+          resend_message_id?: string | null;
+        };
+        Relationships: [];
+      };
     };
     Views: Record<string, never>;
     Functions: Record<string, never>;

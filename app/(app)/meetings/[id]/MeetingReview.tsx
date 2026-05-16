@@ -4,6 +4,7 @@ import { useEffect, useMemo, useRef, useState, type RefObject } from 'react';
 import { useRouter } from 'next/navigation';
 import { cn } from '@/lib/utils';
 import type { ReviewData } from './page';
+import SendEmailModal from './SendEmailModal';
 
 const SPEAKER_COLORS = [
   'bg-blue-50 border-blue-300 text-blue-900',
@@ -124,7 +125,10 @@ export default function MeetingReview({ data }: { data: ReviewData }) {
             {meeting.processed_at ? ` · 處理於 ${new Date(meeting.processed_at).toLocaleString('zh-TW')}` : null}
           </p>
         </div>
-        <div className="text-right text-sm text-slate-500">
+        <div className="flex flex-col items-end gap-2 text-right text-sm text-slate-500">
+          {meeting.status === 'done' ? (
+            <SendEmailModal meetingId={meeting.id} />
+          ) : null}
           {meeting.cost_estimate_cents != null && (
             <div>
               估算成本：
