@@ -13,7 +13,7 @@ import type { Database } from './types';
  * you don't read the user.
  */
 
-const PUBLIC_ROUTES = ['/login', '/signup', '/api/auth/callback', '/api/inngest'];
+const PUBLIC_ROUTES = ['/login', '/signup', '/api/auth/callback', '/api/inngest', '/share'];
 
 export async function updateSession(request: NextRequest) {
   let supabaseResponse = NextResponse.next({ request });

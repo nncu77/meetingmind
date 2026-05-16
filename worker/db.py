@@ -81,6 +81,7 @@ def update_meeting_completed(
     gpu_tier: str,
     llm_input_tokens: Optional[int] = None,
     llm_output_tokens: Optional[int] = None,
+    llm_provider: Optional[str] = None,
 ) -> None:
     payload: dict[str, Any] = {
         "status": "done",
@@ -94,8 +95,13 @@ def update_meeting_completed(
         payload["llm_input_tokens"] = llm_input_tokens
     if llm_output_tokens is not None:
         payload["llm_output_tokens"] = llm_output_tokens
+    if llm_provider is not None:
+        payload["llm_provider"] = llm_provider
     get_client().table("meetings").update(payload).eq("id", meeting_id).execute()
-    logger.info("meeting %s marked done (cost=%d cents)", meeting_id, cost_estimate_cents)
+    logger.info(
+        "meeting %s marked done (cost=%d cents, provider=%s)",
+        meeting_id, cost_estimate_cents, llm_provider or "anthropic",
+    )
 
 
 def update_meeting_failed(meeting_id: str, error_message: str) -> None:
@@ -139,9 +145,12 @@ def insert_action_items(
         return 0
     topic_map = topic_id_by_title or {}
 
+    meta = get_meeting_meta(meeting_id)
     if members is None:
-        meta = get_meeting_meta(meeting_id)
         members = get_org_members(meta["org_id"]) if (meta and meta.get("org_id")) else []
+
+    # Phase 15: 對應「會議建立者」的 member.id，所有 action_item 共用同一個
+    creator_member_id = get_creator_member_id(meta) if meta else None
 
     rows = []
     for it in items:
@@ -161,6 +170,7 @@ def insert_action_items(
                 "source_speaker": it.get("source_speaker"),
                 "confidence": float(it["confidence"]),
                 "needs_clarification": it.get("needs_clarification"),
+                "created_by_member_id": creator_member_id,
             }
         )
     res = get_client().table("action_items").insert(rows).execute()
@@ -287,8 +297,29 @@ def update_member_voice_embedding(member_id: str, embedding: list[float]) -> Non
 
 
 def get_meeting_meta(meeting_id: str) -> Optional[dict[str, Any]]:
-    res = get_client().table("meetings").select("id, org_id, title, language, created_at").eq("id", meeting_id).single().execute()
+    res = get_client().table("meetings").select("id, org_id, title, language, created_at, created_by").eq("id", meeting_id).single().execute()
     return res.data
+
+
+def get_creator_member_id(meeting_meta: dict[str, Any]) -> Optional[str]:
+    """Phase 15: 影響圈圖譜需要 action_item.created_by_member_id。
+    Spec：「沒主持人就用 meetings.created_by 對應的 member_id」。"""
+    created_by = meeting_meta.get("created_by")
+    org_id = meeting_meta.get("org_id")
+    if not created_by or not org_id:
+        return None
+    res = (
+        get_client()
+        .table("members")
+        .select("id")
+        .eq("user_id", created_by)
+        .eq("org_id", org_id)
+        .maybeSingle()
+        .execute()
+    )
+    if not res.data:
+        return None
+    return res.data["id"]
 
 
 def ensure_meeting_exists(meeting_id: str, org_id: str, title: str = "Smoke test") -> None:

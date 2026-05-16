@@ -1,6 +1,8 @@
 import Link from 'next/link';
 import { signUpAction } from './actions';
 
+export const dynamic = 'force-dynamic';
+
 export default async function SignupPage({
   searchParams,
 }: {

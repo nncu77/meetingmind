@@ -2,6 +2,11 @@ import Link from 'next/link';
 import { redirect } from 'next/navigation';
 import { createSupabaseServerClient } from '@/lib/supabase/server';
 
+// (app) 之下所有頁都需要 cookies()/getUser()，永遠是 per-request。
+// Next.js 16 的 static-detection 偶爾誤判 /meetings/new 等子頁可 prerender，
+// 統一在這裡標 dynamic 避開 invariant error。
+export const dynamic = 'force-dynamic';
+
 export default async function AppLayout({ children }: { children: React.ReactNode }) {
   const supabase = await createSupabaseServerClient();
   const {
@@ -37,8 +42,14 @@ export default async function AppLayout({ children }: { children: React.ReactNod
               <Link href="/members" className="hover:text-slate-900">
                 成員
               </Link>
+              <Link href="/insights" className="hover:text-slate-900">
+                影響圈
+              </Link>
               <Link href="/eval" className="hover:text-slate-900">
                 指標
+              </Link>
+              <Link href="/settings/usage" className="hover:text-slate-900">
+                用量
               </Link>
             </nav>
           </div>

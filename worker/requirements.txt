@@ -47,6 +47,10 @@ supabase==2.9.1
 # Anthropic (worker-side calls to Claude, if needed)
 anthropic==0.42.0
 
+# OpenAI SDK — Phase 11: strict 模式走 Together AI Llama 70B (OpenAI-compat protocol)
+# Together AI 沒有 Anthropic-compat endpoint，所以 strict 路徑必須用 openai SDK。
+openai==1.59.4
+
 # Pin setuptools < 81 — newer versions removed pkg_resources which ctranslate2
 # still imports. Without this pin, fresh installs break faster-whisper imports.
 setuptools<81

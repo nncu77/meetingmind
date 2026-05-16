@@ -49,3 +49,6 @@ worker/.pytest_cache/
 
 # local test artifacts (may contain signed URLs)
 test_audio/
+
+# Vercel env paste-helper (contains secrets)
+vercel-env.txt

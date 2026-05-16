@@ -56,9 +56,18 @@ export default async function EvalPage() {
   // STT / GPU breakdown
   const sttCounts: Record<string, number> = {};
   const gpuCounts: Record<string, number> = {};
+  // Phase 11: 依 LLM provider 分組計算成本與用量
+  const providerStats: Record<string, { count: number; costCents: number; tokensIn: number; tokensOut: number }> = {};
   for (const m of done) {
     if (m.stt_backend) sttCounts[m.stt_backend] = (sttCounts[m.stt_backend] ?? 0) + 1;
     if (m.gpu_tier) gpuCounts[m.gpu_tier] = (gpuCounts[m.gpu_tier] ?? 0) + 1;
+    const provider = m.llm_provider ?? 'anthropic';  // 舊資料沒寫的視為 anthropic
+    const ps = providerStats[provider] ?? { count: 0, costCents: 0, tokensIn: 0, tokensOut: 0 };
+    ps.count += 1;
+    ps.costCents += m.cost_estimate_cents ?? 0;
+    ps.tokensIn += m.llm_input_tokens ?? 0;
+    ps.tokensOut += m.llm_output_tokens ?? 0;
+    providerStats[provider] = ps;
   }
 
   const avgActionItemsPerMeeting = done.length ? actionItems.length / done.length : 0;
@@ -146,6 +155,44 @@ export default async function EvalPage() {
               平均 {Math.round(totalLlmIn / done.length).toLocaleString()} in /
               {Math.round(totalLlmOut / done.length).toLocaleString()} out per meeting
             </p>
+          )}
+        </Card>
+
+        <Card title="LLM provider 分布（依模型成本與用量）">
+          {Object.keys(providerStats).length === 0 ? (
+            <p className="text-sm text-slate-400">尚無資料</p>
+          ) : (
+            <ul className="space-y-2 text-sm">
+              {Object.entries(providerStats)
+                .sort((a, b) => b[1].count - a[1].count)
+                .map(([provider, ps]) => {
+                  const pct = done.length ? (ps.count / done.length) * 100 : 0;
+                  const isStrict = provider === 'together';
+                  return (
+                    <li key={provider}>
+                      <div className="flex items-center justify-between text-xs">
+                        <span className="font-medium">
+                          {isStrict ? 'Strict · Llama 70B (Together)' : 'Standard · Claude (Anthropic)'}
+                        </span>
+                        <span className="tabular-nums text-slate-500">
+                          {ps.count} 場 · ${(ps.costCents / 100).toFixed(2)}
+                          <span className="ml-2 text-slate-400">({pct.toFixed(0)}%)</span>
+                        </span>
+                      </div>
+                      <div className="mt-1 h-1.5 w-full overflow-hidden rounded-full bg-slate-200">
+                        <div
+                          className={isStrict ? 'h-full bg-violet-500' : 'h-full bg-slate-700'}
+                          style={{ width: `${pct}%` }}
+                        />
+                      </div>
+                      <p className="mt-1 text-[10px] text-slate-500">
+                        平均 {ps.count ? Math.round(ps.tokensIn / ps.count).toLocaleString() : 0} in /{' '}
+                        {ps.count ? Math.round(ps.tokensOut / ps.count).toLocaleString() : 0} out tokens / 場
+                      </p>
+                    </li>
+                  );
+                })}
+            </ul>
           )}
         </Card>
 

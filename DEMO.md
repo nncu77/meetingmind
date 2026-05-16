@@ -253,6 +253,112 @@ create policy "meetings visible to org unless confidential"
 
 ---
 
+## 4f. v2 擴充進度（進行中）
+
+`feat/v2-expansion` 分支正在加 6 個新功能 + 1 套雙層 quota 系統。所有花錢功能（寄信、Llama 70B 嚴格模式、PDF/Word 匯出、分享連結、議題時間軸 LLM 摘要）都必須先過 `checkQuota()` → 操作後 `recordUsage()`。
+
+**Phase 15（完成）：會議影響圈圖譜**
+
+- 新頁面 `/insights`：D3.js force-directed 圖,節點 = 成員,連線 = 「A 在某場會議指派任務給 B」
+- 節點大小 = 被指派任務總數,有聲紋註冊的成員金邊框,選中的紫字加粗
+- 連線粗細 = `log2(weight + 1) * 2`,顏色淡藍 `#93c5fd`,hover tooltip 顯示「N 次指派」
+- 拖曳節點 / 滾輪縮放 / 拖背景平移
+- 點節點開右側 panel:該成員「指派他人 / 被指派」分布 + 最近 5 場相關會議連結
+- 時間範圍 select:7 / 30 / 90 天 / 全部
+- 「只看我相關」toggle:篩出與當前 user 有交互的子圖
+- Empty state:少於 3 節點或 5 邊 → 顯示示意圖 + 提示文案
+- 嚴格遵守 D3-in-React 雷區:`useRef` SVG / `[data, dimensions]` 依賴 / tick 直接 mutate DOM / 拆 component / 個別 import 不用 `import * as d3`
+
+**底層:**
+
+- `action_items` 加 `created_by_member_id`(會議建立者對應的 member.id),既有資料 backfill
+- `influence_graph` SQL view 聚合連線次數,排除自指派
+- Worker `insert_action_items` 也寫入新欄位給未來新會議
+
+**Phase 2（完成）：議題時間軸（跨會議聚類）**
+
+- `topic_segments` 加 `embedding vector(1536)` + `cluster_id`，新表 `topic_clusters` 含 centroid / canonical_title / current_state_summary
+- Worker 在 insert_topic_segments 後自動算 OpenAI `text-embedding-3-small` embedding，cosine ≥ 0.75 加入既有 cluster（running average 更新 centroid），否則開新 cluster — 失敗不阻擋會議完成
+- `/topics/[clusterId]` 頁面：
+  + 頂部「目前狀態」卡片：Claude Haiku 4.5 摘要 summary / next_step / open_blockers，**30 分鐘 cache 在 topic_clusters 表內**，每次 cache 失效或按【更新摘要】重新計算扣一次 `topic_timeline_query` quota
+  + 中間垂直時間軸：每場會議一個節點（決議綠 / 未決問題橘 / 僅討論灰），含當場該議題下的決議、行動項目、未決問題
+  + 下方「尚未解決的問題」彙整跨會議所有 open questions
+- 會議詳情頁每個議題段加 `GitBranch` 圖示 → `/topics/{cluster_id}`；未聚類時 disabled + tooltip
+- `scripts/backfill-topic-embeddings.ts`：一次性 script，對所有 embedding=null 的 topic 算 embedding + 指派 cluster（與 worker 同邏輯、同閾值），手動跑 `npx tsx scripts/backfill-topic-embeddings.ts`
+
+**新增環境變數（Phase 2）：**
+
+```
+OPENAI_API_KEY=                   # embedding 用；可換成 Cohere / Voyage 等更便宜方案
+OPENAI_EMBEDDING_MODEL=           # 可選 override，預設 text-embedding-3-small
+```
+
+**Phase 11（完成）：機密會議走 Together AI Llama 70B**
+
+- 上傳 / 錄音表單把 select 換成 radio：「標準（Claude）」/「嚴格（Llama 70B）」，列出 quota 進度
+- `privacy_level='strict'` → worker `extract.py` 走 openai SDK 到 `api.together.xyz/v1` 配 `Llama-3.3-70B-Instruct-Turbo`；標準路徑維持 Claude via OpenRouter 不變
+- Inngest handler 在派工前 `checkQuota('strict_meeting')`：通過 → 立即 `recordUsage()` 並繼續；不通過 → 把 `meetings.status='quota_blocked'`，詳情頁顯示「改用標準模式重新處理」按鈕，按了就改 `privacy_level='standard'` 重新派 Inngest event
+- 詳情頁標題旁加 `Standard`（灰盾）/ `Strict`（紫鎖）badge
+- 處理完寫 `meetings.llm_provider = 'anthropic' | 'together'`，`/eval` 多一張「LLM provider 分布」卡片顯示依模型分組的場數 / 成本 / token；既有圖未動
+- DB 加 `llm_provider` 欄位；`status` check constraint 加入 `quota_blocked`
+- 既有 `privacy_level='enhanced'` 在 DB 保留以免破壞舊資料，但 UI 不再可選
+
+**新增的環境變數（Phase 11）：**
+
+```
+TOGETHER_API_KEY=                          # Together AI key，strict 模式才用到
+TOGETHER_MODEL_STRICT=                     # 可選 override，預設 Llama-3.3-70B-Instruct-Turbo
+TOGETHER_BASE_URL=                         # 可選 override，預設 https://api.together.xyz/v1
+```
+
+**Phase 3（完成）：公開分享連結（read-only）**
+
+- 詳情頁右上角【分享】按鈕 → modal:7 天 / 30 天 / 永久 三種期限（永久二次確認）
+- token 用 `crypto.randomBytes(24).toString('base64url')`，32 字元
+- 公開頁 `/share/[token]` 不需登入即可查看，自動 re-sign audio URL（即使原 7 天簽名過期也能聽）
+- 過期 / 撤銷 / 不存在統一回「此連結無效或已過期」（避免 token 枚舉）
+- 公開頁:三欄式簡化 UI（逐字稿+音檔 / 議題+決議+未決問題 / 行動項目），所有 mutation UI 隱藏
+- `<meta robots="noindex,nofollow">` 防搜尋引擎索引
+- Rate limit 30 req/min/IP（in-memory bucket per Vercel instance）
+- 每次成功訪問 `view_count + 1`（fire-and-forget，不阻塞）
+- 撤銷即時生效；建立 / 撤銷都更新 modal 內列表
+
+**Phase 4（完成）：匯出 PDF + Word**
+
+- 詳情頁右上角【匯出】dropdown：下載 PDF / 下載 Word
+- PDF：`@react-pdf/renderer`，A4 直式，註冊 Noto Sans TC variable TTF（12MB 進 `public/fonts/`），中文不出豆腐；每頁有 MeetingMind 頁首 + 頁碼頁尾，`is_confidential` 或 `privacy_level=strict` 時頁尾顯示「機密 · 限內部使用」
+- Word：`docx` 套件，標題用 `HEADING_1/2`，行動項目用真 Word table（可在 MS Word 編輯排序），信心欄背景色用 cell shading
+- 兩種格式共用 `buildDigestBundle()` 資料層，內容結構一致（議題 / 行動項目 / 決議 / 未決問題）
+- 中文檔名用 RFC 5987 編碼（`filename*=UTF-8''…`），跨瀏覽器不亂碼
+- 匯出前 `checkQuota('pdf_export' or 'docx_export')`，渲染成功才 `recordUsage()`
+
+**Phase 1（完成）：寄送會議紀錄 email**
+
+- 會議詳情頁右上角【寄出會議紀錄】按鈕，會議狀態 `done` 才出現
+- Modal 自動帶入所有「行動項目負責人」的 email（去重）作為預設收件人
+- 主旨預設 `[會議紀錄] {標題} - YYYY/MM/DD`，可改；可加附加訊息（iframe 即時預覽）
+- React Email 模板 `emails/MeetingDigest.tsx`：議題摘要 / 行動項目表格（含信心顏色）/ 決議 / 未決問題 / 跳回 Web 連結
+- 寄件人顯示為 `{org.name} 透過 MeetingMind`
+- 寄送前 `checkQuota('email_send')`，Resend 寄成功才 `recordUsage()`；失敗 / 配額超過都不扣
+- 所有寄送紀錄寫入 `email_sends` 表
+
+**Phase 0（完成）：雙層 quota 系統**
+
+- 每 org 月度上限 + 全平台月度 hard cap，兩道都檢查
+- 達 80% / 100% 自動寄 alert email 給 `ALERT_RECIPIENT_EMAIL`（同月不重複）
+- `/settings/usage` 顯示當月所有 6 種 resource 的進度條
+- 既有 4 道成本防線（`lib/cost/estimate.ts` PLAN_LIMITS）完全不受影響——這套是「v2 新功能呼叫次數」的 quota，與「處理會議的成本」是分離的。
+
+**新增的環境變數（Phase 0 / 1 共用）：**
+
+```
+RESEND_API_KEY=re_xxx            # Resend API key（alert email + 會議紀錄 email 共用）
+ALERT_RECIPIENT_EMAIL=you@x.com  # 收 quota 警示信的位址（通常就是你自己）
+RESEND_FROM_EMAIL=onboarding@resend.dev  # 寄件位址，預設 Resend 沙箱 domain
+```
+
+---
+
 ## 5. 沒做的事（誠實）
 
 - **多人邀請**：目前 org 是「一個人一個 org」。團隊邀請功能（email 連結 + token-based join）沒做
