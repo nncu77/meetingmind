@@ -257,6 +257,18 @@ create policy "meetings visible to org unless confidential"
 
 `feat/v2-expansion` 分支正在加 6 個新功能 + 1 套雙層 quota 系統。所有花錢功能（寄信、Llama 70B 嚴格模式、PDF/Word 匯出、分享連結、議題時間軸 LLM 摘要）都必須先過 `checkQuota()` → 操作後 `recordUsage()`。
 
+**Phase 3（完成）：公開分享連結（read-only）**
+
+- 詳情頁右上角【分享】按鈕 → modal:7 天 / 30 天 / 永久 三種期限（永久二次確認）
+- token 用 `crypto.randomBytes(24).toString('base64url')`，32 字元
+- 公開頁 `/share/[token]` 不需登入即可查看，自動 re-sign audio URL（即使原 7 天簽名過期也能聽）
+- 過期 / 撤銷 / 不存在統一回「此連結無效或已過期」（避免 token 枚舉）
+- 公開頁:三欄式簡化 UI（逐字稿+音檔 / 議題+決議+未決問題 / 行動項目），所有 mutation UI 隱藏
+- `<meta robots="noindex,nofollow">` 防搜尋引擎索引
+- Rate limit 30 req/min/IP（in-memory bucket per Vercel instance）
+- 每次成功訪問 `view_count + 1`（fire-and-forget，不阻塞）
+- 撤銷即時生效；建立 / 撤銷都更新 modal 內列表
+
 **Phase 4（完成）：匯出 PDF + Word**
 
 - 詳情頁右上角【匯出】dropdown：下載 PDF / 下載 Word

@@ -354,6 +354,36 @@ export type Database = {
         Update: never;
         Relationships: [];
       };
+      meeting_share_links: {
+        Row: {
+          id: string;
+          meeting_id: string;
+          org_id: string;
+          token: string;
+          expires_at: string | null;
+          created_by: string | null;
+          created_at: string;
+          revoked_at: string | null;
+          view_count: number;
+        };
+        Insert: {
+          id?: string;
+          meeting_id: string;
+          org_id: string;
+          token: string;
+          expires_at?: string | null;
+          created_by?: string | null;
+          created_at?: string;
+          revoked_at?: string | null;
+          view_count?: number;
+        };
+        Update: {
+          expires_at?: string | null;
+          revoked_at?: string | null;
+          view_count?: number;
+        };
+        Relationships: [];
+      };
       email_sends: {
         Row: {
           id: string;

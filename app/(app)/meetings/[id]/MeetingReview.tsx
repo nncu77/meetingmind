@@ -6,6 +6,7 @@ import { cn } from '@/lib/utils';
 import type { ReviewData } from './page';
 import SendEmailModal from './SendEmailModal';
 import ExportDropdown from './ExportDropdown';
+import ShareLinkModal from './ShareLinkModal';
 
 const SPEAKER_COLORS = [
   'bg-blue-50 border-blue-300 text-blue-900',
@@ -130,6 +131,7 @@ export default function MeetingReview({ data }: { data: ReviewData }) {
           {meeting.status === 'done' ? (
             <div className="flex items-center gap-2">
               <ExportDropdown meetingId={meeting.id} />
+              <ShareLinkModal meetingId={meeting.id} />
               <SendEmailModal meetingId={meeting.id} />
             </div>
           ) : null}
