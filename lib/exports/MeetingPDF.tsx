@@ -29,8 +29,9 @@ export function registerFonts() {
   Font.register({
     family: FONT_FAMILY,
     fonts: [
-      { src: fontPath },
-      { src: fontPath, fontStyle: 'italic' },
+      { src: fontPath, fontWeight: 400 },
+      { src: fontPath, fontWeight: 700 },
+      { src: fontPath, fontWeight: 400, fontStyle: 'italic' },
     ],
   });
   // 讓 long 中文段落能斷行（react-pdf 預設只在空白處斷行，中文要關掉這檢查）
@@ -91,6 +92,7 @@ const styles = StyleSheet.create({
     fontSize: 11,
     color: '#000000',
     letterSpacing: 0.5,
+    fontWeight: 'bold',
   },
   headerTitle: {
     fontSize: 9,
@@ -123,6 +125,7 @@ const styles = StyleSheet.create({
     fontSize: 18,
     color: '#000000',
     marginBottom: 4,
+    fontWeight: 'bold',
   },
   meetingMeta: {
     fontSize: 9,
@@ -153,6 +156,7 @@ const styles = StyleSheet.create({
     paddingBottom: 2,
     borderBottomWidth: 0.5,
     borderBottomColor: '#e2e8f0',
+    fontWeight: 'bold',
   },
 
   // Topic
@@ -166,6 +170,7 @@ const styles = StyleSheet.create({
     fontSize: 10,
     color: '#000000',
     marginBottom: 2,
+    fontWeight: 'bold',
   },
   topicSummary: {
     fontSize: 9,
@@ -201,6 +206,7 @@ const styles = StyleSheet.create({
     color: '#000000',
     paddingVertical: 4,
     paddingHorizontal: 6,
+    fontWeight: 'bold',
   },
   tableRow: {
     flexDirection: 'row',
