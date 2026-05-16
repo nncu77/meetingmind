@@ -257,6 +257,15 @@ create policy "meetings visible to org unless confidential"
 
 `feat/v2-expansion` 分支正在加 6 個新功能 + 1 套雙層 quota 系統。所有花錢功能（寄信、Llama 70B 嚴格模式、PDF/Word 匯出、分享連結、議題時間軸 LLM 摘要）都必須先過 `checkQuota()` → 操作後 `recordUsage()`。
 
+**Phase 4（完成）：匯出 PDF + Word**
+
+- 詳情頁右上角【匯出】dropdown：下載 PDF / 下載 Word
+- PDF：`@react-pdf/renderer`，A4 直式，註冊 Noto Sans TC variable TTF（12MB 進 `public/fonts/`），中文不出豆腐；每頁有 MeetingMind 頁首 + 頁碼頁尾，`is_confidential` 或 `privacy_level=strict` 時頁尾顯示「機密 · 限內部使用」
+- Word：`docx` 套件，標題用 `HEADING_1/2`，行動項目用真 Word table（可在 MS Word 編輯排序），信心欄背景色用 cell shading
+- 兩種格式共用 `buildDigestBundle()` 資料層，內容結構一致（議題 / 行動項目 / 決議 / 未決問題）
+- 中文檔名用 RFC 5987 編碼（`filename*=UTF-8''…`），跨瀏覽器不亂碼
+- 匯出前 `checkQuota('pdf_export' or 'docx_export')`，渲染成功才 `recordUsage()`
+
 **Phase 1（完成）：寄送會議紀錄 email**
 
 - 會議詳情頁右上角【寄出會議紀錄】按鈕，會議狀態 `done` 才出現

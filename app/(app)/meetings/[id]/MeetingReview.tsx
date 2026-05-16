@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { cn } from '@/lib/utils';
 import type { ReviewData } from './page';
 import SendEmailModal from './SendEmailModal';
+import ExportDropdown from './ExportDropdown';
 
 const SPEAKER_COLORS = [
   'bg-blue-50 border-blue-300 text-blue-900',
@@ -127,7 +128,10 @@ export default function MeetingReview({ data }: { data: ReviewData }) {
         </div>
         <div className="flex flex-col items-end gap-2 text-right text-sm text-slate-500">
           {meeting.status === 'done' ? (
-            <SendEmailModal meetingId={meeting.id} />
+            <div className="flex items-center gap-2">
+              <ExportDropdown meetingId={meeting.id} />
+              <SendEmailModal meetingId={meeting.id} />
+            </div>
           ) : null}
           {meeting.cost_estimate_cents != null && (
             <div>
