@@ -2,6 +2,7 @@
 
 import { useState, useRef, type FormEvent } from 'react';
 import { useRouter } from 'next/navigation';
+import PrivacyLevelPicker, { type PrivacyLevel } from '../PrivacyLevelPicker';
 
 type Phase = 'idle' | 'preparing' | 'uploading' | 'finalising' | 'done' | 'error';
 
@@ -13,7 +14,7 @@ export default function UploadForm() {
   const [error, setError] = useState<string | null>(null);
   const [title, setTitle] = useState('');
   const [language, setLanguage] = useState<'zh' | 'zh-en'>('zh');
-  const [privacy, setPrivacy] = useState<'standard' | 'enhanced' | 'strict'>('standard');
+  const [privacy, setPrivacy] = useState<PrivacyLevel>('standard');
   const [confidential, setConfidential] = useState(false);
 
   async function getAudioDuration(file: File): Promise<number> {
@@ -169,23 +170,9 @@ export default function UploadForm() {
             <option value="zh-en">中文 + 英文夾雜</option>
           </select>
         </div>
-        <div>
-          <label className="mb-1 block text-sm font-medium text-slate-700" htmlFor="privacy">
-            隱私層級
-          </label>
-          <select
-            id="privacy"
-            value={privacy}
-            onChange={(e) => setPrivacy(e.target.value as typeof privacy)}
-            disabled={submitting}
-            className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm focus:border-slate-500 focus:outline-none focus:ring-1 focus:ring-slate-500"
-          >
-            <option value="standard">標準</option>
-            <option value="enhanced">加強</option>
-            <option value="strict">嚴格 (尚未支援)</option>
-          </select>
-        </div>
       </div>
+
+      <PrivacyLevelPicker value={privacy} onChange={setPrivacy} disabled={submitting} />
 
       <div className="flex items-center gap-2">
         <input

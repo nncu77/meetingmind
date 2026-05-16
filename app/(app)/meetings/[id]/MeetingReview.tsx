@@ -7,6 +7,7 @@ import type { ReviewData } from './page';
 import SendEmailModal from './SendEmailModal';
 import ExportDropdown from './ExportDropdown';
 import ShareLinkModal from './ShareLinkModal';
+import { Lock, Shield } from 'lucide-react';
 
 const SPEAKER_COLORS = [
   'bg-blue-50 border-blue-300 text-blue-900',
@@ -120,12 +121,18 @@ export default function MeetingReview({ data }: { data: ReviewData }) {
       {/* Header */}
       <header className="mb-4 flex flex-wrap items-baseline justify-between gap-2 border-b pb-4">
         <div>
-          <h1 className="text-2xl font-semibold text-slate-900">{meeting.title}</h1>
+          <div className="flex items-center gap-2">
+            <h1 className="text-2xl font-semibold text-slate-900">{meeting.title}</h1>
+            <PrivacyBadge level={meeting.privacy_level} />
+          </div>
           <p className="text-sm text-slate-500">
             {meeting.duration_seconds ? `${meeting.duration_seconds}s` : '—'} ·
             {' '}狀態：<span className="font-medium">{meeting.status}</span>
             {meeting.processed_at ? ` · 處理於 ${new Date(meeting.processed_at).toLocaleString('zh-TW')}` : null}
           </p>
+          {meeting.status === 'quota_blocked' ? (
+            <QuotaBlockedBanner meetingId={meeting.id} />
+          ) : null}
         </div>
         <div className="flex flex-col items-end gap-2 text-right text-sm text-slate-500">
           {meeting.status === 'done' ? (
@@ -393,6 +400,68 @@ export default function MeetingReview({ data }: { data: ReviewData }) {
             )}
           </ul>
         </section>
+      </div>
+    </div>
+  );
+}
+
+function PrivacyBadge({ level }: { level: 'standard' | 'enhanced' | 'strict' }) {
+  if (level === 'strict') {
+    return (
+      <span className="inline-flex items-center gap-1 rounded-full bg-violet-100 px-2 py-0.5 text-xs font-medium text-violet-800">
+        <Lock className="h-3 w-3" />
+        Strict
+      </span>
+    );
+  }
+  return (
+    <span className="inline-flex items-center gap-1 rounded-full bg-slate-100 px-2 py-0.5 text-xs font-medium text-slate-600">
+      <Shield className="h-3 w-3" />
+      Standard
+    </span>
+  );
+}
+
+function QuotaBlockedBanner({ meetingId }: { meetingId: string }) {
+  const [busy, setBusy] = useState(false);
+  const [err, setErr] = useState<string | null>(null);
+  const router = useRouter();
+
+  async function retry() {
+    setBusy(true);
+    setErr(null);
+    try {
+      const res = await fetch(`/api/meetings/${meetingId}/retry-as-standard`, {
+        method: 'POST',
+      });
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({}));
+        setErr(body?.message ?? `重試失敗（${res.status}）`);
+        return;
+      }
+      router.refresh();
+    } catch (e) {
+      setErr(e instanceof Error ? e.message : String(e));
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <div className="mt-2 rounded-md border border-rose-200 bg-rose-50 px-3 py-2 text-sm">
+      <p className="text-rose-800">
+        本月嚴格模式（Llama 70B）額度已用完，會議尚未處理。
+      </p>
+      <div className="mt-2 flex items-center gap-2">
+        <button
+          type="button"
+          onClick={retry}
+          disabled={busy}
+          className="rounded-md bg-rose-600 px-3 py-1 text-xs font-medium text-white hover:bg-rose-700 disabled:opacity-60"
+        >
+          {busy ? '處理中…' : '改用標準模式重新處理'}
+        </button>
+        {err ? <span className="text-xs text-rose-700">{err}</span> : null}
       </div>
     </div>
   );

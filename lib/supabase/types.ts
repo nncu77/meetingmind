@@ -9,7 +9,8 @@
 
 export type Json = string | number | boolean | null | { [key: string]: Json } | Json[];
 
-type Status = 'pending' | 'processing' | 'done' | 'failed';
+type Status = 'pending' | 'processing' | 'done' | 'failed' | 'quota_blocked';
+type LlmProvider = 'anthropic' | 'together';
 type PrivacyLevel = 'standard' | 'enhanced' | 'strict';
 type Language = 'zh' | 'zh-en';
 type Plan = 'free' | 'team' | 'business';
@@ -80,6 +81,7 @@ export type Database = {
           llm_output_tokens: number | null;
           stt_backend: 'groq' | 'local' | null;
           gpu_tier: 'a10g' | 'l4' | 'cpu' | null;
+          llm_provider: LlmProvider | null;
         };
         Insert: {
           id?: string;
@@ -110,6 +112,7 @@ export type Database = {
           llm_output_tokens?: number | null;
           stt_backend?: 'groq' | 'local' | null;
           gpu_tier?: 'a10g' | 'l4' | 'cpu' | null;
+          llm_provider?: LlmProvider | null;
         };
         Relationships: [];
       };

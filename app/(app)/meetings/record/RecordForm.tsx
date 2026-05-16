@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
+import PrivacyLevelPicker, { type PrivacyLevel } from '../PrivacyLevelPicker';
 
 type Phase =
   | 'idle'        // not started yet, awaiting title + record click
@@ -19,7 +20,7 @@ export default function RecordForm() {
   const [error, setError] = useState<string | null>(null);
   const [title, setTitle] = useState('');
   const [language, setLanguage] = useState<'zh' | 'zh-en'>('zh');
-  const [privacy, setPrivacy] = useState<'standard' | 'enhanced' | 'strict'>('standard');
+  const [privacy, setPrivacy] = useState<PrivacyLevel>('standard');
   const [confidential, setConfidential] = useState(false);
   const [elapsedSec, setElapsedSec] = useState(0);
   const [progress, setProgress] = useState(0);
@@ -230,23 +231,9 @@ export default function RecordForm() {
               <option value="zh-en">中文 + 英文夾雜</option>
             </select>
           </div>
-          <div>
-            <label className="mb-1 block text-sm font-medium text-slate-700" htmlFor="privacy">
-              隱私層級
-            </label>
-            <select
-              id="privacy"
-              value={privacy}
-              onChange={(e) => setPrivacy(e.target.value as typeof privacy)}
-              disabled={setupDisabled}
-              className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm"
-            >
-              <option value="standard">標準</option>
-              <option value="enhanced">加強</option>
-              <option value="strict">嚴格 (尚未支援)</option>
-            </select>
-          </div>
         </div>
+
+        <PrivacyLevelPicker value={privacy} onChange={setPrivacy} disabled={setupDisabled} />
 
         <label className="flex items-center gap-2 text-sm text-slate-700">
           <input

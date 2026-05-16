@@ -11,6 +11,7 @@ ingestion / display.
 """
 from __future__ import annotations
 
+import json
 import logging
 import os
 from dataclasses import dataclass
@@ -21,7 +22,9 @@ import anthropic
 
 logger = logging.getLogger(__name__)
 
+# Lazy-init clients; strict 模式才會用到 openai
 _client: Optional[anthropic.Anthropic] = None
+_openai_client = None  # openai.OpenAI | None — typed dynamically since 套件是 strict only
 
 # ---------------------------------------------------------------------------
 # Client
@@ -38,8 +41,31 @@ def get_client() -> anthropic.Anthropic:
     return _client
 
 
+def get_openai_client_for_together():
+    """Together AI 走 OpenAI-compat protocol，所以用 openai SDK 而非 anthropic。"""
+    global _openai_client
+    if _openai_client is None:
+        # 只在 strict 路徑被觸發時才 import，避免標準路徑要拉這個依賴
+        from openai import OpenAI  # type: ignore
+
+        _openai_client = OpenAI(
+            api_key=os.environ["TOGETHER_API_KEY"],
+            base_url=os.environ.get("TOGETHER_BASE_URL", "https://api.together.xyz/v1"),
+        )
+    return _openai_client
+
+
 # OpenRouter passthrough model id (per memory feedback_anthropic_via_openrouter)
 MODEL_PRIMARY = os.environ.get("ANTHROPIC_MODEL_PRIMARY", "anthropic/claude-sonnet-4.5")
+# Together AI strict-tier model（spec: Llama 3.3 70B Instruct Turbo）
+MODEL_STRICT = os.environ.get(
+    "TOGETHER_MODEL_STRICT", "meta-llama/Llama-3.3-70B-Instruct-Turbo"
+)
+
+
+def privacy_to_provider(privacy_level: str) -> str:
+    """spec: privacy_level == 'strict' → 'together'，否則 'anthropic'。"""
+    return "together" if privacy_level == "strict" else "anthropic"
 
 
 # ---------------------------------------------------------------------------
@@ -297,17 +323,27 @@ class ExtractionResult:
     topics: list[dict[str, Any]]
     input_tokens: int
     output_tokens: int
+    provider: str = "anthropic"  # 'anthropic' | 'together'，回填 meetings.llm_provider
 
 
-def extract_all(ctx: MeetingContext, transcript_segs: list[dict[str, Any]]) -> ExtractionResult:
-    """Call Claude 4× with one tool each. Errors in individual calls are caught
-    and logged — we'd rather have 3-of-4 extraction results than 0."""
+def extract_all(
+    ctx: MeetingContext,
+    transcript_segs: list[dict[str, Any]],
+    provider: str = "anthropic",
+) -> ExtractionResult:
+    """Call LLM 4× with one tool each. Errors in individual calls are caught
+    and logged — we'd rather have 3-of-4 extraction results than 0.
+
+    Phase 11: provider='together' 走 Together AI Llama 70B 而不是 Claude。
+    Tool schema 不變（OpenAI function calling 與 Anthropic Tool Use 共用同一份
+    JSON schema），但底層 SDK 與 response 解析路徑不同。
+    """
     transcript_md = format_transcript_md(transcript_segs)
     system = system_prompt(ctx)
 
     total_in, total_out = 0, 0
 
-    def call(user_msg: str, tool: dict[str, Any], key: str) -> dict[str, Any]:
+    def call_anthropic(user_msg: str, tool: dict[str, Any], key: str) -> dict[str, Any]:
         nonlocal total_in, total_out
         try:
             resp = get_client().messages.create(
@@ -329,14 +365,58 @@ def extract_all(ctx: MeetingContext, transcript_segs: list[dict[str, Any]]) -> E
             logger.exception("Claude call failed for tool %s", tool["name"])
             return {key: []}
 
+    def call_together(user_msg: str, tool: dict[str, Any], key: str) -> dict[str, Any]:
+        nonlocal total_in, total_out
+        # 轉成 OpenAI function-calling 格式：
+        #   Anthropic: {name, description, input_schema}
+        #   OpenAI:    {type: 'function', function: {name, description, parameters}}
+        openai_tool = {
+            "type": "function",
+            "function": {
+                "name": tool["name"],
+                "description": tool.get("description", ""),
+                "parameters": tool["input_schema"],
+            },
+        }
+        try:
+            resp = get_openai_client_for_together().chat.completions.create(
+                model=MODEL_STRICT,
+                max_tokens=4096,
+                messages=[
+                    {"role": "system", "content": system},
+                    {"role": "user", "content": user_msg},
+                ],
+                tools=[openai_tool],
+                tool_choice={"type": "function", "function": {"name": tool["name"]}},
+            )
+            if resp.usage:
+                total_in += resp.usage.prompt_tokens or 0
+                total_out += resp.usage.completion_tokens or 0
+            choice = resp.choices[0] if resp.choices else None
+            if not choice or not choice.message or not choice.message.tool_calls:
+                logger.warning("together tool %s returned no tool_calls", tool["name"])
+                return {key: []}
+            tc = choice.message.tool_calls[0]
+            args_str = tc.function.arguments
+            try:
+                return json.loads(args_str)
+            except json.JSONDecodeError:
+                logger.exception("together tool %s returned invalid JSON args", tool["name"])
+                return {key: []}
+        except Exception:
+            logger.exception("Together AI call failed for tool %s", tool["name"])
+            return {key: []}
+
+    call = call_together if provider == "together" else call_anthropic
+
     action_items = call(user_prompt_action_items(transcript_md), TOOL_ACTION_ITEMS, "items").get("items", [])
     decisions = call(user_prompt_decisions(transcript_md), TOOL_DECISIONS, "decisions").get("decisions", [])
     open_questions = call(user_prompt_open_questions(transcript_md), TOOL_OPEN_QUESTIONS, "questions").get("questions", [])
     topics = call(user_prompt_topics(transcript_md), TOOL_TOPICS, "topics").get("topics", [])
 
     logger.info(
-        "extraction done: %d action_items, %d decisions, %d open_questions, %d topics (tokens: in=%d out=%d)",
-        len(action_items), len(decisions), len(open_questions), len(topics),
+        "extraction done (provider=%s): %d action_items, %d decisions, %d open_questions, %d topics (tokens: in=%d out=%d)",
+        provider, len(action_items), len(decisions), len(open_questions), len(topics),
         total_in, total_out,
     )
     return ExtractionResult(
@@ -346,4 +426,5 @@ def extract_all(ctx: MeetingContext, transcript_segs: list[dict[str, Any]]) -> E
         topics=topics,
         input_tokens=total_in,
         output_tokens=total_out,
+        provider=provider,
     )

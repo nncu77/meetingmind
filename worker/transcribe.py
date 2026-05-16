@@ -26,7 +26,7 @@ from db import (
     update_meeting_failed,
     get_meeting_meta,
 )
-from extract import extract_all, MeetingContext
+from extract import extract_all, MeetingContext, privacy_to_provider
 
 logger = logging.getLogger(__name__)
 
@@ -232,7 +232,8 @@ def run_transcription_pipeline(
                 attendees=[{"speaker_label": sp, "display_name": None} for sp in unique_speakers],
                 language=language,
             )
-            ext = extract_all(ctx, aligned)
+            provider = privacy_to_provider(privacy_level)
+            ext = extract_all(ctx, aligned, provider=provider)
 
             # Fetch members once for owner resolution
             from db import get_org_members  # noqa: WPS433
@@ -262,6 +263,7 @@ def run_transcription_pipeline(
                 gpu_tier=gpu_tier,
                 llm_input_tokens=ext.input_tokens,
                 llm_output_tokens=ext.output_tokens,
+                llm_provider=ext.provider,
             )
 
             # TODO Week 1 Day 8+: Resemblyzer voice matching against members table

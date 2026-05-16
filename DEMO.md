@@ -257,6 +257,24 @@ create policy "meetings visible to org unless confidential"
 
 `feat/v2-expansion` 分支正在加 6 個新功能 + 1 套雙層 quota 系統。所有花錢功能（寄信、Llama 70B 嚴格模式、PDF/Word 匯出、分享連結、議題時間軸 LLM 摘要）都必須先過 `checkQuota()` → 操作後 `recordUsage()`。
 
+**Phase 11（完成）：機密會議走 Together AI Llama 70B**
+
+- 上傳 / 錄音表單把 select 換成 radio：「標準（Claude）」/「嚴格（Llama 70B）」，列出 quota 進度
+- `privacy_level='strict'` → worker `extract.py` 走 openai SDK 到 `api.together.xyz/v1` 配 `Llama-3.3-70B-Instruct-Turbo`；標準路徑維持 Claude via OpenRouter 不變
+- Inngest handler 在派工前 `checkQuota('strict_meeting')`：通過 → 立即 `recordUsage()` 並繼續；不通過 → 把 `meetings.status='quota_blocked'`，詳情頁顯示「改用標準模式重新處理」按鈕，按了就改 `privacy_level='standard'` 重新派 Inngest event
+- 詳情頁標題旁加 `Standard`（灰盾）/ `Strict`（紫鎖）badge
+- 處理完寫 `meetings.llm_provider = 'anthropic' | 'together'`，`/eval` 多一張「LLM provider 分布」卡片顯示依模型分組的場數 / 成本 / token；既有圖未動
+- DB 加 `llm_provider` 欄位；`status` check constraint 加入 `quota_blocked`
+- 既有 `privacy_level='enhanced'` 在 DB 保留以免破壞舊資料，但 UI 不再可選
+
+**新增的環境變數（Phase 11）：**
+
+```
+TOGETHER_API_KEY=                          # Together AI key，strict 模式才用到
+TOGETHER_MODEL_STRICT=                     # 可選 override，預設 Llama-3.3-70B-Instruct-Turbo
+TOGETHER_BASE_URL=                         # 可選 override，預設 https://api.together.xyz/v1
+```
+
 **Phase 3（完成）：公開分享連結（read-only）**
 
 - 詳情頁右上角【分享】按鈕 → modal:7 天 / 30 天 / 永久 三種期限（永久二次確認）

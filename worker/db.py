@@ -81,6 +81,7 @@ def update_meeting_completed(
     gpu_tier: str,
     llm_input_tokens: Optional[int] = None,
     llm_output_tokens: Optional[int] = None,
+    llm_provider: Optional[str] = None,
 ) -> None:
     payload: dict[str, Any] = {
         "status": "done",
@@ -94,8 +95,13 @@ def update_meeting_completed(
         payload["llm_input_tokens"] = llm_input_tokens
     if llm_output_tokens is not None:
         payload["llm_output_tokens"] = llm_output_tokens
+    if llm_provider is not None:
+        payload["llm_provider"] = llm_provider
     get_client().table("meetings").update(payload).eq("id", meeting_id).execute()
-    logger.info("meeting %s marked done (cost=%d cents)", meeting_id, cost_estimate_cents)
+    logger.info(
+        "meeting %s marked done (cost=%d cents, provider=%s)",
+        meeting_id, cost_estimate_cents, llm_provider or "anthropic",
+    )
 
 
 def update_meeting_failed(meeting_id: str, error_message: str) -> None:
