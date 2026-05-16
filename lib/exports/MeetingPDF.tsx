@@ -72,7 +72,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 36,
     fontFamily: FONT_FAMILY,
     fontSize: 10,
-    color: '#1e293b',
+    color: '#000000',
   },
   // Header (fixed = appears on every page)
   pageHeader: {
@@ -89,7 +89,7 @@ const styles = StyleSheet.create({
   },
   wordmark: {
     fontSize: 11,
-    color: '#0f172a',
+    color: '#000000',
     letterSpacing: 0.5,
   },
   headerTitle: {
@@ -121,7 +121,7 @@ const styles = StyleSheet.create({
   // Title block on page 1
   meetingTitle: {
     fontSize: 18,
-    color: '#0f172a',
+    color: '#000000',
     marginBottom: 4,
   },
   meetingMeta: {
@@ -147,7 +147,7 @@ const styles = StyleSheet.create({
   },
   h2: {
     fontSize: 12,
-    color: '#0f172a',
+    color: '#000000',
     marginTop: 8,
     marginBottom: 5,
     paddingBottom: 2,
@@ -164,7 +164,7 @@ const styles = StyleSheet.create({
   },
   topicTitle: {
     fontSize: 10,
-    color: '#0f172a',
+    color: '#000000',
     marginBottom: 2,
   },
   topicSummary: {
@@ -198,7 +198,7 @@ const styles = StyleSheet.create({
   },
   th: {
     fontSize: 9,
-    color: '#1e293b',
+    color: '#000000',
     paddingVertical: 4,
     paddingHorizontal: 6,
   },
@@ -211,7 +211,7 @@ const styles = StyleSheet.create({
     fontSize: 9,
     paddingVertical: 5,
     paddingHorizontal: 6,
-    color: '#1e293b',
+    color: '#000000',
   },
   colOwner: { width: '18%' },
   colDesc: { width: '52%' },
@@ -235,7 +235,7 @@ const styles = StyleSheet.create({
   listBody: { flex: 1 },
   decisionText: {
     fontSize: 10,
-    color: '#0f172a',
+    color: '#000000',
   },
   questionText: {
     fontSize: 10,
