@@ -94,7 +94,7 @@ const styles = StyleSheet.create({
   },
   headerTitle: {
     fontSize: 9,
-    color: '#475569',
+    color: '#334155',
     maxWidth: 320,
     textAlign: 'right',
   },
@@ -111,7 +111,7 @@ const styles = StyleSheet.create({
     borderTopWidth: 0.5,
     borderTopColor: '#cbd5e1',
     fontSize: 8,
-    color: '#94a3b8',
+    color: '#475569',
   },
   confidentialBadge: {
     color: '#b91c1c',
@@ -126,7 +126,7 @@ const styles = StyleSheet.create({
   },
   meetingMeta: {
     fontSize: 9,
-    color: '#64748b',
+    color: '#334155',
     marginBottom: 12,
   },
   appendedBox: {
@@ -169,7 +169,7 @@ const styles = StyleSheet.create({
   },
   topicSummary: {
     fontSize: 9,
-    color: '#475569',
+    color: '#334155',
     lineHeight: 1.4,
   },
 
@@ -198,7 +198,7 @@ const styles = StyleSheet.create({
   },
   th: {
     fontSize: 9,
-    color: '#475569',
+    color: '#1e293b',
     paddingVertical: 4,
     paddingHorizontal: 6,
   },
@@ -243,12 +243,12 @@ const styles = StyleSheet.create({
   },
   meta: {
     fontSize: 8,
-    color: '#64748b',
+    color: '#334155',
     marginTop: 1,
   },
   quote: {
     fontSize: 8,
-    color: '#64748b',
+    color: '#475569',
     fontStyle: 'italic',
     marginTop: 2,
     paddingLeft: 5,
