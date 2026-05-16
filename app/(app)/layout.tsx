@@ -40,6 +40,9 @@ export default async function AppLayout({ children }: { children: React.ReactNod
               <Link href="/eval" className="hover:text-slate-900">
                 指標
               </Link>
+              <Link href="/settings/usage" className="hover:text-slate-900">
+                用量
+              </Link>
             </nav>
           </div>
           <div className="flex items-center gap-3 text-sm">

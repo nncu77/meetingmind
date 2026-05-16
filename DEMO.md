@@ -253,6 +253,27 @@ create policy "meetings visible to org unless confidential"
 
 ---
 
+## 4f. v2 擴充進度（進行中）
+
+`feat/v2-expansion` 分支正在加 6 個新功能 + 1 套雙層 quota 系統。所有花錢功能（寄信、Llama 70B 嚴格模式、PDF/Word 匯出、分享連結、議題時間軸 LLM 摘要）都必須先過 `checkQuota()` → 操作後 `recordUsage()`。
+
+**Phase 0(完成）：雙層 quota 系統**
+
+- 每 org 月度上限 + 全平台月度 hard cap，兩道都檢查
+- 達 80% / 100% 自動寄 alert email 給 `ALERT_RECIPIENT_EMAIL`（同月不重複）
+- `/settings/usage` 顯示當月所有 6 種 resource 的進度條
+- 既有 4 道成本防線（`lib/cost/estimate.ts` PLAN_LIMITS）完全不受影響——這套是「v2 新功能呼叫次數」的 quota，與「處理會議的成本」是分離的。
+
+**新增的環境變數（Phase 0）：**
+
+```
+RESEND_API_KEY=re_xxx            # Resend API key（alert email 與 Phase 1 寄送會議紀錄共用）
+ALERT_RECIPIENT_EMAIL=you@x.com  # 收 quota 警示信的位址（通常就是你自己）
+RESEND_FROM_EMAIL=onboarding@resend.dev  # 寄件位址，預設 Resend 沙箱 domain
+```
+
+---
+
 ## 5. 沒做的事（誠實）
 
 - **多人邀請**：目前 org 是「一個人一個 org」。團隊邀請功能（email 連結 + token-based join）沒做
