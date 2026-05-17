@@ -24,8 +24,12 @@ type MetaResponse = {
 type Status =
   | { kind: 'idle' }
   | { kind: 'sending' }
-  | { kind: 'success'; count: number }
+  | { kind: 'success'; count: number; demo?: boolean }
   | { kind: 'error'; message: string };
+
+// 同步 app/api/meetings/[id]/send-email/route.ts 的 EMAIL_DEMO_MODE
+// 翻成 false 即恢復真實寄送 (需先 verified sender domain)
+const EMAIL_DEMO_MODE = true;
 
 export default function SendEmailModal({ meetingId }: { meetingId: string }) {
   const [open, setOpen] = useState(false);
@@ -121,7 +125,11 @@ export default function SendEmailModal({ meetingId }: { meetingId: string }) {
         });
         return;
       }
-      setStatus({ kind: 'success', count: body.recipientCount ?? recipients.length });
+      setStatus({
+        kind: 'success',
+        count: body.recipientCount ?? recipients.length,
+        demo: !!body.demo,
+      });
     } catch (e) {
       setStatus({ kind: 'error', message: e instanceof Error ? e.message : String(e) });
     }
@@ -180,6 +188,13 @@ export default function SendEmailModal({ meetingId }: { meetingId: string }) {
                   </div>
                 ) : meta ? (
                   <>
+                    {EMAIL_DEMO_MODE ? (
+                      <div className="rounded-md border border-sky-200 bg-sky-50 px-3 py-2 text-xs text-sky-800">
+                        📋 <strong>Demo 模式</strong>：此 portfolio 環境不實際送出 email，
+                        但會走完整流程（驗證 / quota / 紀錄寫入）。右側預覽即為實際會發送的內容。
+                      </div>
+                    ) : null}
+
                     {meta.unresolvedOwnerCount > 0 ? (
                       <div className="rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800">
                         ⚠ 有 {meta.unresolvedOwnerCount} 條行動項目尚未分派到成員，
@@ -264,7 +279,9 @@ export default function SendEmailModal({ meetingId }: { meetingId: string }) {
                     ) : null}
                     {status.kind === 'success' ? (
                       <div className="rounded-md bg-emerald-50 px-3 py-2 text-sm text-emerald-700">
-                        ✓ 已寄給 {status.count} 位收件人
+                        {status.demo
+                          ? `✓ Demo 模式：寄送流程驗證成功（不實際發送）。完整 email 內容請見右側預覽，也可下載 PDF / Word。`
+                          : `✓ 已寄給 ${status.count} 位收件人`}
                       </div>
                     ) : null}
                   </>

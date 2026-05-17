@@ -14,6 +14,12 @@ const Body = z.object({
 
 export const dynamic = 'force-dynamic';
 
+// Resend free tier 只能寄給帳戶擁有者(j... gmail)。
+// Portfolio demo 階段沒申請 verified sender domain → 對其他 user 一律走 demo:
+// 全套驗證 + quota 扣 + 預覽顯示真實內容,但不呼叫 Resend、不真的送出。
+// 翻成 false 即恢復真實寄送(需先驗證 domain 或保證收件人 = 帳戶擁有者)。
+const EMAIL_DEMO_MODE = true;
+
 export async function POST(
   req: Request,
   { params }: { params: Promise<{ id: string }> },
@@ -104,6 +110,26 @@ export async function POST(
   const html = await renderDigestHtml(bundle.props);
   const subject = body.subject?.trim() || defaultSubject(meeting.title, meeting.created_at);
 
+  const recipients = Array.from(new Set(body.recipients.map((e) => e.trim().toLowerCase()))).filter(Boolean);
+
+  // ----- Demo mode 短路:跳過 Resend,維持 quota 扣與 email_sends 紀錄 -----
+  if (EMAIL_DEMO_MODE) {
+    await recordUsage(member.org_id, 'email_send');
+    await admin.from('email_sends').insert({
+      meeting_id: meetingId,
+      sent_by: user.id,
+      recipients,
+      subject,
+      status: 'sent',
+      resend_message_id: 'demo-mode',
+    });
+    return NextResponse.json({
+      ok: true,
+      demo: true,
+      recipientCount: recipients.length,
+    });
+  }
+
   // ----- Resend 寄送 -----
   const apiKey = process.env.RESEND_API_KEY;
   if (!apiKey) {
@@ -115,8 +141,6 @@ export async function POST(
   const resend = new Resend(apiKey);
   const fromAddr = process.env.RESEND_FROM_EMAIL ?? 'onboarding@resend.dev';
   const fromLine = `${org?.name ?? 'MeetingMind'} 透過 MeetingMind <${fromAddr}>`;
-
-  const recipients = Array.from(new Set(body.recipients.map((e) => e.trim().toLowerCase()))).filter(Boolean);
 
   // 寫一筆 pending 紀錄，方便事後追
   const pendingInsert = await admin
