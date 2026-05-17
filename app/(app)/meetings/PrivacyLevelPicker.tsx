@@ -6,6 +6,10 @@ import { cn } from '@/lib/utils';
 
 export type PrivacyLevel = 'standard' | 'strict';
 
+// 嚴格模式暫停 — 等 Together AI 預算到位 + 確認 zh-TW 模型穩定再開
+// 翻成 true 即可恢復；同步見 app/api/upload/route.ts 的 server-side 防線
+const STRICT_AVAILABLE = false;
+
 type QuotaState = {
   allowed: boolean;
   reason: 'org_limit' | 'platform_limit' | null;
@@ -25,6 +29,7 @@ export default function PrivacyLevelPicker({
   const [quota, setQuota] = useState<QuotaState | null>(null);
 
   useEffect(() => {
+    if (!STRICT_AVAILABLE) return;
     fetch('/api/quota/strict_meeting')
       .then((r) => (r.ok ? r.json() : null))
       .then((d) => {
@@ -34,16 +39,19 @@ export default function PrivacyLevelPicker({
   }, []);
 
   const strictBlocked = quota != null && !quota.allowed;
-  const strictTooltip = strictBlocked
-    ? quota!.reason === 'org_limit'
-      ? `本月嚴格模式額度已用完（${quota!.orgUsed}/${quota!.orgLimit}），下個月 1 號重置`
-      : '平台本月嚴格模式額度已用完'
-    : undefined;
+  const strictDisabledForUser = !STRICT_AVAILABLE || strictBlocked;
+  const strictTooltip = !STRICT_AVAILABLE
+    ? '嚴格隱私模式籌備中（等 zh-TW 適配模型 + Together AI 預算），預計後續開放'
+    : strictBlocked
+      ? quota!.reason === 'org_limit'
+        ? `本月嚴格模式額度已用完（${quota!.orgUsed}/${quota!.orgLimit}），下個月 1 號重置`
+        : '平台本月嚴格模式額度已用完'
+      : undefined;
 
-  // Quota 滿時 force fallback 到 standard
+  // 任何時候 value === 'strict' 但目前不可用 → 退回 standard
   useEffect(() => {
-    if (strictBlocked && value === 'strict') onChange('standard');
-  }, [strictBlocked, value, onChange]);
+    if (strictDisabledForUser && value === 'strict') onChange('standard');
+  }, [strictDisabledForUser, value, onChange]);
 
   return (
     <div>
@@ -62,16 +70,20 @@ export default function PrivacyLevelPicker({
         <Option
           checked={value === 'strict'}
           onClick={() => onChange('strict')}
-          disabled={disabled || strictBlocked}
+          disabled={disabled || strictDisabledForUser}
           accent="violet"
           icon={<Lock className="h-4 w-4" />}
           title="嚴格"
-          subtitle="Llama 70B"
-          desc="人事 / 法律 / 財務敏感會議。走 Together AI 自架 Llama 3.3 70B。"
+          subtitle={STRICT_AVAILABLE ? 'Llama 70B' : '即將推出'}
+          desc={
+            STRICT_AVAILABLE
+              ? '人事 / 法律 / 財務敏感會議。走 Together AI 自架 Llama 3.3 70B。'
+              : '敏感會議專屬路線。Together AI 預算 + zh-TW 適配模型籌備中，後續開放。'
+          }
           tooltip={strictTooltip}
         />
       </div>
-      {quota ? (
+      {STRICT_AVAILABLE && quota ? (
         <p className="mt-1 text-xs text-slate-500">
           嚴格模式本月用量：{quota.orgUsed} / {quota.orgLimit}
           {strictBlocked ? (

@@ -127,13 +127,20 @@ export async function POST(req: Request) {
   }
 
   // ---------- Create meeting row + signed upload URL -----------------------
+  // 防線:嚴格模式暫停,server-side 一律把 strict 改成 standard
+  // 即使有人 bypass UI 直接打 API,也走 Anthropic 不會踩 Together 402 / 簡中
+  // 翻 STRICT_AVAILABLE flag 即可恢復 — 對應 PrivacyLevelPicker.tsx
+  const STRICT_AVAILABLE = false;
+  const effectivePrivacyLevel =
+    !STRICT_AVAILABLE && body.privacyLevel === 'strict' ? 'standard' : body.privacyLevel;
+
   const { data: meeting, error: meetErr } = await supabase
     .from('meetings')
     .insert({
       org_id: member.org_id,
       title: body.title,
       language: body.language,
-      privacy_level: body.privacyLevel,
+      privacy_level: effectivePrivacyLevel,
       is_confidential: body.isConfidential,
       created_by: user.id,
       duration_seconds: body.durationSeconds,
