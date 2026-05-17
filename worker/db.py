@@ -314,7 +314,7 @@ def get_creator_member_id(meeting_meta: dict[str, Any]) -> Optional[str]:
         .select("id")
         .eq("user_id", created_by)
         .eq("org_id", org_id)
-        .maybeSingle()
+        .maybe_single()
         .execute()
     )
     if not res.data:
